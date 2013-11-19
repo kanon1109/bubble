@@ -328,5 +328,18 @@ public class MathUtil
 		var c:int = -sn;
 		return ( -b + Math.sqrt(b * b - (4 * a * c))) / (2 * a);
 	}
+	
+	/**
+	 * 计算距离
+	 * @param	x1	x坐标1
+	 * @param	y1	y坐标1
+	 * @param	x2	x坐标2
+	 * @param	y2	y坐标2
+	 * @return	距离
+	 */
+	public static function distance(x1:Number, y1:Number, x2:Number, y2:Number):Number
+	{
+		return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+	}
 }
 }

@@ -54,6 +54,19 @@ public class Bubble
         var maxColumns:int;
         for (var i:int = 1; i <= this.num; i += 1)
         {
+			/*if (rows > 2)
+			{
+				if (column > 1 && column < maxColumns - 1)
+				{
+					column++;
+					if (column > maxColumns)
+					{
+						rows++;
+						column = 1;
+					}
+					continue;
+				}
+			}*/
             bVo = new BubbleVo();
             bVo.color = 1;
             bVo.isCheck = false;
@@ -158,14 +171,12 @@ public class Bubble
             shotBVo = this.shotBubbleList[i];
             if (shotBVo != bVo)
             {
-                if (Math.abs(shotBVo.x - bVo.x) <= radius && 
-                    Math.abs(shotBVo.y - bVo.y) <= radius)
-                {
-                    this.autoAbsorption(shotBVo, bVo);
-                    this.shotBubbleList.splice(i, 1);
-                    trace(bVo.rows);
-                    break;
-                }
+				if (MathUtil.distance(shotBVo.x, shotBVo.y, bVo.x, bVo.y) <= this.radius * 2)
+				{
+					this.autoAbsorption(shotBVo, bVo);
+					this.shotBubbleList.splice(i, 1);
+					break;
+				}
             }
         }
     }
@@ -177,6 +188,7 @@ public class Bubble
      */
     private function autoAbsorption(shotBVo:BubbleVo, bVo:BubbleVo):void
     {
+		bVo.display.alpha = .5;
         if (bVo.rows % 2 != 0)
         {
             
@@ -237,7 +249,7 @@ public class Bubble
             vo.x > rect.right - vo.radius)
             vo.vx *= -1;
     }
-    
+	
     /**
      * 销毁
      */
