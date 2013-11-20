@@ -6,7 +6,7 @@ import flash.events.Event;
 import flash.events.MouseEvent;
 import flash.geom.Rectangle;
 import net.hires.debug.Stats;
-import util.MathUtil;
+import utils.MathUtil;
 /**
  * ...泡泡龙测试
  * @author Kanon
@@ -20,7 +20,7 @@ public class BubbleTest extends Sprite
     public function BubbleTest() 
     {
         stage.align = StageAlign.TOP_LEFT;
-        this.bubble = new Bubble(this, 32, 6, this.radius);
+        this.bubble = new Bubble(this, 1, 6, this.radius);
         this.bubble.range = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
         this.cannon = new Cannon(stage.stageWidth * .5, stage.stageHeight, 20);
         this.initUI();
