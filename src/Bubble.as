@@ -1,17 +1,20 @@
 package  
 {
 import data.BubbleVo;
+import event.BubbleEvent;
 import flash.display.DisplayObjectContainer;
 import flash.display.Sprite;
+import flash.events.EventDispatcher;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 import flash.utils.Dictionary;
 import utils.MathUtil;
+import utils.Random;
 /**
  * ...泡泡龙算法
  * @author Kanon
  */
-public class Bubble 
+public class Bubble extends EventDispatcher
 {
     //泡泡数据列表
     private var bubbleList:Array;
@@ -21,8 +24,12 @@ public class Bubble
     private var columns:int;
     //行数
     private var _rows:int;
+	//当前泡泡的数量
+    private var _bubbleNum:int;
     //半径
     private var radius:Number;
+	//颜色种类
+    private var colorType:uint;
     //碰撞检测范围
     private var hitRange:Number;
     //外部容器
@@ -31,17 +38,30 @@ public class Bubble
     private var _range:Rectangle;
     //射出的泡泡列表
     private var shotBubbleList:Array;
+	//泡泡龙事件
+	private var bubbleEvent:BubbleEvent;
     public function Bubble(stage:DisplayObjectContainer, 
-                           rows:int, columns:int, radius:Number)
+                           rows:int, columns:int, 
+						   radius:Number, colorType:int)
     {
         this.stage = stage;
         this._rows = rows;
         this.columns = columns;
         this.radius = radius;
+        this.colorType = colorType;
         this.hitRange = radius * 2 - 5;
         this.initData();
         this.initDraw();
+        this.initEvent();
     }
+	
+	/**
+	 * 初始化事件
+	 */
+	private function initEvent():void 
+	{
+		this.bubbleEvent = new BubbleEvent(BubbleEvent.UPDATE);
+	}
     
     /**
      * 初始化地图数据
@@ -56,11 +76,12 @@ public class Bubble
         var maxColumns:int;
         var point:Point;
         //偶数行的数量
-        var evenRowNum:int = this.rows % 2 == 0 ? this.rows / 2 : (this.rows + 1) / 2 - 1;
-        var num:int = this.rows * this.columns - evenRowNum;
+        var evenRowNum:int = this._rows % 2 == 0 ? this._rows / 2 : (this._rows + 1) / 2 - 1;
+        var num:int = this._rows * this.columns - evenRowNum;
+		this._bubbleNum = num;
         trace("num", num);
         //循环行数
-        for (var row:int = 0; row < this.rows; row += 1)
+        for (var row:int = 0; row < this._rows; row += 1)
         {
             this.bubbleList[row] = [];
             if (row % 2 == 1) maxColumns = this.columns - 1; //双数行
@@ -71,7 +92,7 @@ public class Bubble
                 if (num > 0)
                 {
                     bVo = new BubbleVo();
-                    bVo.color = 1;
+                    bVo.color = Random.randint(1, this.colorType);
                     bVo.isCheck = false;
                     bVo.radius = this.radius;
                     bVo.row = row;
@@ -86,7 +107,6 @@ public class Bubble
                 else this.bubbleList[row][column] = null;
             }
         }
-        //TraceUtil.dump(this.bubbleList, "this.bubbleList");
     }
     
     /**
@@ -124,9 +144,10 @@ public class Bubble
      */
     private function drawBubble(bVo:BubbleVo):void
     {
+		var color:Array = [null, 0xFF00FF, 0xFFFF00, 0x0000FF, 0xCCFF00, 0x00CCFF];
         bVo.display = new Sprite();
         Sprite(bVo.display).graphics.lineStyle(1, 0);
-        Sprite(bVo.display).graphics.beginFill(0xFF00FF);
+        Sprite(bVo.display).graphics.beginFill(color[bVo.color]);
         Sprite(bVo.display).graphics.drawCircle(0, 0, bVo.radius);
         Sprite(bVo.display).graphics.endFill();
         bVo.display.x = bVo.x;
@@ -154,6 +175,10 @@ public class Bubble
 					this.shotBubbleList.splice(i, 1);
                     //自动吸附
 					this.autoAbsorption(shotBVo, bVo);
+					//判断颜色类型
+					this.checkColorType(shotBVo);
+					//发送更新事件
+					this.dispatchEvent(this.bubbleEvent);
 					break;
 				}
             }
@@ -168,11 +193,10 @@ public class Bubble
     private function autoAbsorption(shotBVo:BubbleVo, bVo:BubbleVo):void
     {
         //判断是否超过最后一行
-        if (bVo.row + 1 >= this.rows) this.addNewRow();
+        if (bVo.row + 1 >= this._rows) this.addNewEmptyRow();
         var arr:Array = this.getRoundBubblePos(bVo.row, bVo.column);
         var length:int = arr.length;
-        //trace("length", length);
-		if(length == 0) return;
+		if (length == 0) return;
         //距离列表
         var disArr:Array = [];
         var point:Point;
@@ -206,8 +230,49 @@ public class Bubble
         shotBVo.vx = 0;
         shotBVo.vy = 0;
         this.bubbleList[shotBVo.row][shotBVo.column] = shotBVo;
+		this._bubbleNum++;
     }
     
+	/**
+	 * 判断颜色类型
+	 * @param	shotBVo		发射出去的泡泡数据
+	 */
+	private function checkColorType(shotBVo:BubbleVo):void
+	{
+		var arr:Array = this.getRoundBubblePos(shotBVo.row, shotBVo.column);
+		var length:int = arr.length;
+		if (length == 0) return;
+		var bVo:BubbleVo;
+        var row:int;
+        var column:int;
+		for (var i:int = 0; i < length; i++) 
+        {
+            row = arr[i][0];
+            column = arr[i][1];
+            bVo = this.bubbleList[row][column];
+			if (bVo && bVo.color == shotBVo.color)
+			{
+				this.removeBubble(bVo);
+				this.checkColorType(bVo);
+			}
+		}
+	}
+	
+	/**
+	 * 销毁泡泡
+	 * @param	bVo		泡泡数据
+	 */
+	private function removeBubble(bVo:BubbleVo):void
+	{
+		if (!bVo) return;
+		this.bubbleList[bVo.row][bVo.column] = null;
+		delete this.bubbleDict[bVo];
+		if (bVo.display && bVo.display.parent)
+			bVo.display.parent.removeChild(bVo.display);
+		bVo.display = null;
+	}
+	
+	
     /**
      * 根据行列获取周围6个泡泡行列
      * @param	row         行数
@@ -252,28 +317,31 @@ public class Bubble
                 arr.push([row - 1, column]);
         }
         
-        //下面2个
-        if (column + index >= 0 && 
-            column + index < maxColumns)
-            arr.push([row + 1, column + index]);
-        if (column >= 0 && column < maxColumns)
-            arr.push([row + 1, column]);
+		if (row + 1 < this._rows)
+        {
+			//下面2个
+			if (column + index >= 0 && 
+				column + index < maxColumns)
+				arr.push([row + 1, column + index]);
+			if (column >= 0 && column < maxColumns)
+				arr.push([row + 1, column]);
+		}
         return arr;
     }
     
     /**
      * 新建一个空行
      */
-    private function addNewRow():void
+    private function addNewEmptyRow():void
     {
-        this.rows++;
+        this._rows++;
         var maxColumns:int;
-        if (this.rows % 2 == 1) maxColumns = this.columns - 1; //双数行
+        if (this._rows % 2 == 1) maxColumns = this.columns - 1; //双数行
         else maxColumns = this.columns; //单数行
-        this.bubbleList[this.rows - 1] = [];
+        this.bubbleList[this._rows - 1] = [];
         for (var column:int = 0; column < maxColumns; column += 1)
         {
-            this.bubbleList[this.rows - 1][column] = null;
+            this.bubbleList[this._rows - 1][column] = null;
         }
     }
     
@@ -298,7 +366,7 @@ public class Bubble
         bVo.y = y;
         bVo.vx = vx;
         bVo.vy = vy;
-        bVo.color = color;
+        bVo.color = Random.randint(1, this.colorType);
         bVo.radius = 30;
         bVo.isCheck = false;
         this.drawBubble(bVo);
@@ -385,5 +453,10 @@ public class Bubble
      * 当前行数
      */
     public function get rows():int { return _rows; };
+	
+	/**
+	 * 当前泡泡的数量
+	 */
+	public function get bubbleNum():int{ return _bubbleNum; }
 }
 }

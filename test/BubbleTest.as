@@ -1,5 +1,6 @@
 package  
 {
+import event.BubbleEvent;
 import flash.display.Sprite;
 import flash.display.StageAlign;
 import flash.events.Event;
@@ -20,7 +21,8 @@ public class BubbleTest extends Sprite
     public function BubbleTest() 
     {
         stage.align = StageAlign.TOP_LEFT;
-        this.bubble = new Bubble(this, 1, 6, this.radius);
+        this.bubble = new Bubble(this, 1, 6, this.radius, 5);
+        this.bubble.addEventListener(BubbleEvent.UPDATE, updateHandler);
         this.bubble.range = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
         this.cannon = new Cannon(stage.stageWidth * .5, stage.stageHeight, 20);
         this.initUI();
@@ -28,6 +30,11 @@ public class BubbleTest extends Sprite
         this.addEventListener(Event.ENTER_FRAME, loop);
         stage.addEventListener(MouseEvent.CLICK, mouseClickHander);
     }
+	
+	private function updateHandler(event:BubbleEvent):void 
+	{
+		//trace(this.bubble.rows);
+	}
     
     private function mouseClickHander(event:MouseEvent):void 
     {
