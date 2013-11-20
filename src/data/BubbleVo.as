@@ -11,7 +11,7 @@ public class BubbleVo
     public var color:uint;
     /**是否被检查过*/
     public var isCheck:Boolean;
-    /**显示对象*/
+    /**用户数据*/
     public var display:DisplayObject;
     /**x坐标*/
     public var x:Number;
@@ -24,7 +24,7 @@ public class BubbleVo
     /**纵向向向量*/
     public var vy:Number = 0;
     /**行数*/
-    public var rows:int;
+    public var row:int;
     /**列表数*/
     public var column:int;
 }

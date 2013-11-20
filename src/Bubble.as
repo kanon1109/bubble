@@ -3,8 +3,11 @@ package
 import data.BubbleVo;
 import flash.display.DisplayObjectContainer;
 import flash.display.Sprite;
+import flash.geom.Point;
 import flash.geom.Rectangle;
-import util.MathUtil;
+import flash.utils.Dictionary;
+import utils.MathUtil;
+import utils.TraceUtil;
 /**
  * ...泡泡龙算法
  * @author Kanon
@@ -13,10 +16,14 @@ public class Bubble
 {
     //泡泡数据列表
     private var bubbleList:Array;
-    //最大列数
-    private var maxColumns:int;
-    //数量
-    private var num:int;
+    //泡泡字典用于快速遍历泡泡并且让其移动
+    private var bubbleDict:Dictionary;
+    //列数
+    private var columns:int;
+    //行数
+    private var rows:int;
+    //最大行数
+    private var maxRows:int;
     //半径
     private var radius:Number;
     //外部容器
@@ -25,12 +32,14 @@ public class Bubble
     private var _range:Rectangle;
     //射出的泡泡列表
     private var shotBubbleList:Array;
-    public function Bubble(stage:DisplayObjectContainer, num:int, 
-                           maxColumns:int, radius:Number)
+    public function Bubble(stage:DisplayObjectContainer, 
+                           maxRows:int, rows:int,
+                           columns:int, radius:Number)
     {
         this.stage = stage;
-        this.maxColumns = maxColumns;
-        this.num = num;
+        this.maxRows = maxRows;
+        this.rows = rows;
+        this.columns = columns;
         this.radius = radius;
         this.initData();
         this.initDraw();
@@ -42,62 +51,61 @@ public class Bubble
     private function initData():void
     {
         this.bubbleList = [];
+        this.bubbleDict = new Dictionary();
         this.shotBubbleList = [];
         var bVo:BubbleVo;
-        var rows:int = 1;
-        var column:int = 1;
-        var startX:Number = 0;
-        var startY:Number = this.radius;
-        //间距
-        var dis:Number = 0;
         //最大列数
         var maxColumns:int;
-        for (var i:int = 1; i <= this.num; i += 1)
+        var point:Point;
+        //偶数行的数量
+        var evenRowNum:int = this.rows % 2 == 0 ? this.rows / 2 : (this.rows + 1) / 2 - 1;
+        var num:int = this.rows * this.columns - evenRowNum;
+        trace("数量", num);
+        //循环行数
+        for (var row:int = 0; row < this.maxRows; row += 1)
         {
-			/*if (rows > 2)
-			{
-				if (column > 1 && column < maxColumns - 1)
-				{
-					column++;
-					if (column > maxColumns)
-					{
-						rows++;
-						column = 1;
-					}
-					continue;
-				}
-			}*/
-            bVo = new BubbleVo();
-            bVo.color = 1;
-            bVo.isCheck = false;
-            bVo.radius = this.radius;
-            bVo.rows = rows;
-            bVo.column = column;
-            if (rows % 2 != 0)
+            this.bubbleList[row] = [];
+            if (row % 2 == 1) maxColumns = this.columns - 1; //双数行
+            else maxColumns = this.columns; //单数行
+            //循环列数
+            for (var column:int = 0; column < maxColumns; column += 1)
             {
-                //单数行
-                startX = bVo.radius;
-                maxColumns = this.maxColumns;
+                if (num > 0)
+                {
+                    bVo = new BubbleVo();
+                    bVo.color = 1;
+                    bVo.isCheck = false;
+                    bVo.radius = this.radius;
+                    bVo.row = row;
+                    bVo.column = column;
+                    point = this.getBubblePos(row, column);
+                    bVo.x = point.x;
+                    bVo.y = point.y;
+                    this.bubbleList[row][column] = bVo;
+                    this.bubbleDict[bVo] = bVo;
+                    num--;
+                }
+                else this.bubbleList[row][column] = null;
             }
-            else 
-            {
-                //双数行
-                //起始位置向前移动一个半径距离
-                startX = bVo.radius * 2;
-                dis = bVo.radius - bVo.radius * Math.cos(MathUtil.dgs2rds(45));
-                //数量少一个
-                maxColumns = this.maxColumns - 1;
-            }
-            bVo.x = startX + (column - 1) * bVo.radius * 2;
-            bVo.y = startY + ((rows - 1) * bVo.radius * 2 - (rows - 1) * dis);
-            column++;
-            if (column > maxColumns)
-            {
-                rows++;
-                column = 1;
-            }
-            this.bubbleList.push(bVo);
         }
+        //TraceUtil.dump(this.bubbleList, "this.bubbleList");
+    }
+    
+    /**
+     * 根据行列计算泡泡应该放置的位置
+     * @param	row        行数
+     * @param	column     列数
+     * @return  位置坐标
+     */
+    private function getBubblePos(row:int, column:int):Point
+    {
+        var startX:Number;
+        var startY:Number = this.radius;
+        if (row % 2 == 0) startX = this.radius; //单数行
+        else startX = this.radius * 2; //双数行 起始位置向前移动一个半径距离
+        //行间距
+        var dis:Number = this.radius - this.radius * Math.cos(MathUtil.dgs2rds(45));
+        return new Point(startX + column * this.radius * 2, startY + (row * this.radius * 2 - row * dis))
     }
     
     /**
@@ -106,38 +114,10 @@ public class Bubble
     private function initDraw():void
     {
         var bVo:BubbleVo;
-        var length:int = this.bubbleList.length;
-        for (var i:int = 0; i < length; i += 1)
+        for each (bVo in this.bubbleDict) 
         {
-            bVo = this.bubbleList[i];
             this.drawBubble(bVo);
         }
-    }
-    
-    /**
-     * 添加一个可移动的泡泡
-     * @param	x      起始位置
-     * @param	y      起始位置
-     * @param	vx          x向量
-     * @param	vy          y向量
-     * @param	color       颜色
-     */
-    public function addBubble(x:Number, y:Number, 
-                              vx:Number, vy:Number, 
-                              color:uint):void
-    {
-        if (!this.bubbleList) return;
-        var bVo:BubbleVo = new BubbleVo();
-        bVo.x = x;
-        bVo.y = y;
-        bVo.vx = vx;
-        bVo.vy = vy;
-        bVo.color = color;
-        bVo.radius = 30;
-        bVo.isCheck = false;
-        this.drawBubble(bVo);
-        this.bubbleList.push(bVo);
-        this.shotBubbleList.push(bVo);
     }
     
     /**
@@ -173,8 +153,9 @@ public class Bubble
             {
 				if (MathUtil.distance(shotBVo.x, shotBVo.y, bVo.x, bVo.y) <= this.radius * 2)
 				{
-					this.autoAbsorption(shotBVo, bVo);
+                    bVo.display.alpha = .1;
 					this.shotBubbleList.splice(i, 1);
+					this.autoAbsorption(shotBVo, bVo);
 					break;
 				}
             }
@@ -188,16 +169,144 @@ public class Bubble
      */
     private function autoAbsorption(shotBVo:BubbleVo, bVo:BubbleVo):void
     {
-		bVo.display.alpha = .5;
-        if (bVo.rows % 2 != 0)
+		bVo.display.alpha = .8;
+        var arr:Array = this.getRoundBubblePos(bVo.row, bVo.column);
+        var length:int = arr.length;
+        //trace("length", length);
+		if(length == 0) return;
+        //距离列表
+        var disArr:Array = [];
+        var point:Point;
+        var bVo:BubbleVo;
+        var row:int;
+        var column:int;
+        for (var i:int = 0; i < length; i++) 
         {
-            
+            row = arr[i][0];
+            column = arr[i][1];
+            bVo = this.bubbleList[row][column];
+            //如果此处没有泡泡数据则计算射出的球到这些点的距离
+            if (!bVo) 
+            {
+                point = this.getBubblePos(row, column);
+                //保存所有距离
+                disArr.push( { "distance": MathUtil.distance(shotBVo.x, shotBVo.y, point.x, point.y), 
+                               "index":i, 
+                               "point":point } );
+            }
+        }
+        //return;
+        //排序 最小距离在前
+        disArr.sortOn("distance", Array.NUMERIC);
+        //TraceUtil.dump(disArr);
+        var o:Object = disArr[0];
+        i = o.index;
+        //设置行列
+        shotBVo.row = arr[i][0];
+        shotBVo.column = arr[i][1];
+        trace(shotBVo.row, shotBVo.column);
+        shotBVo.x = o.point.x;
+        shotBVo.y = o.point.y;
+        shotBVo.vx = 0;
+        shotBVo.vy = 0;
+        this.bubbleList[shotBVo.row][shotBVo.column] = shotBVo;
+    }
+    
+    /**
+     * 根据行列获取周围6个泡泡行列
+     * @param	row         行数
+     * @param	column      列数
+     * @return  周围6个泡泡的行列的列表
+     */
+    private function getRoundBubblePos(row:int, column:int):Array
+    {
+        if (!this.bubbleList) return null;
+        var arr:Array = [];
+        //最大列数
+        var maxColumns:int;
+        var index:int;
+        if (row % 2 == 0) maxColumns = this.columns; //单行
+        else maxColumns = this.columns - 1; //双行
+        var bVo:BubbleVo;
+        //左右2个
+        if (column - 1 >= 0)
+        {
+            arr.push([row, column - 1]);
+        }
+        if (column + 1 < maxColumns)
+        {
+            arr.push([row, column + 1]);
+        }
+        //判断上下两行是单行或双行
+        if ((row - 1) % 2 == 0)
+        {
+            //单行
+            index = 1;
+            maxColumns = this.columns;
         }
         else
         {
-            
+            //双行
+            index = -1;
+            maxColumns = this.columns - 1;
         }
-        
+        //上面2个
+        if (row - 1 >= 0)
+        {
+            if (column + index >= 0 && 
+                column + index < maxColumns)
+            {
+                arr.push([row - 1, column + index]);
+            }
+            if (column >= 0 && 
+                column < maxColumns)
+            {
+                arr.push([row - 1, column]);
+            }
+        }
+        //下面2个
+        if (row + 1 < this.maxRows)
+        {
+            if (column + index >= 0 && 
+                column + index < maxColumns)
+            {
+                arr.push([row + 1, column + index]);
+            }
+            if (column >= 0 && 
+                column < maxColumns)
+            {
+                arr.push([row + 1, column]);
+            }
+        }
+        return arr;
+    }
+    
+    //***********public function***********
+    /**
+     * 添加一个可移动的泡泡
+     * @param	x      起始位置
+     * @param	y      起始位置
+     * @param	vx          x向量
+     * @param	vy          y向量
+     * @param	color       颜色
+     */
+    public function addBubble(x:Number, y:Number, 
+                              vx:Number, vy:Number, 
+                              color:uint):void
+    {
+        if (!this.bubbleDict || 
+            !this.shotBubbleList) return;
+        var bVo:BubbleVo = new BubbleVo();
+        bVo.x = x;
+        bVo.y = y;
+        bVo.vx = vx;
+        bVo.vy = vy;
+        bVo.color = color;
+        bVo.radius = 30;
+        bVo.isCheck = false;
+        this.drawBubble(bVo);
+        this.bubbleDict[bVo] = bVo;
+        this.shotBubbleList.push(bVo);
     }
     
     /**
@@ -205,12 +314,10 @@ public class Bubble
      */
     public function update():void
     {
-        if (!this.bubbleList) return;
+        if (!this.bubbleDict) return;
         var bVo:BubbleVo;
-        var length:int = this.bubbleList.length;
-        for (var i:int = 0; i < length; i += 1)
+        for each (bVo in this.bubbleDict) 
         {
-            bVo = this.bubbleList[i];
             bVo.x +=  bVo.vx;
             bVo.y +=  bVo.vy;
             this.checkRange(bVo, this.range);
@@ -223,12 +330,10 @@ public class Bubble
      */
     public function render():void
     {
-        if (!this.bubbleList) return;
+        if (!this.bubbleDict) return;
         var bVo:BubbleVo;
-        var length:int = this.bubbleList.length;
-        for (var i:int = 0; i < length; i += 1)
+        for each (bVo in this.bubbleDict) 
         {
-            bVo = this.bubbleList[i];
             if (bVo.display)
             {
                 bVo.display.x = bVo.x;
@@ -256,17 +361,16 @@ public class Bubble
     public function destroy():void
     {
         var bVo:BubbleVo;
-        var length:int;
-        for (var i:int = length - 1; i >= 0; i -= 1) 
+        for each (bVo in this.bubbleDict)
         {
-            bVo = this.bubbleList[i];
-            if (bVo.display && bVo.display.parent)
+            if (bVo.display && 
+                bVo.display.parent)
                 bVo.display.parent.removeChild(bVo.display);
             bVo.display = null;
-            this.bubbleList.splice(i, 1);
         }
         this.bubbleList = null;
         this.shotBubbleList = null;
+        this.bubbleDict = null;
         this.range = null;
         this.stage = null;
     }

@@ -1,4 +1,4 @@
-﻿package util
+﻿package utils
 {
 import flash.geom.Point;
 public class MathUtil
