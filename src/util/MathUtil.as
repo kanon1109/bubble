@@ -331,11 +331,11 @@ public class MathUtil
 	
 	/**
 	 * 计算距离
-	 * @param	x1	x坐标1
-	 * @param	y1	y坐标1
-	 * @param	x2	x坐标2
-	 * @param	y2	y坐标2
-	 * @return	距离
+	 * @param	x1	点1的x坐标
+	 * @param	y1	点1的y坐标
+	 * @param	x2	点2的x坐标
+	 * @param	y2	点2的y坐标
+	 * @return	2点之间的距离
 	 */
 	public static function distance(x1:Number, y1:Number, x2:Number, y2:Number):Number
 	{
