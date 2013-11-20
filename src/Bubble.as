@@ -7,7 +7,6 @@ import flash.geom.Point;
 import flash.geom.Rectangle;
 import flash.utils.Dictionary;
 import utils.MathUtil;
-import utils.TraceUtil;
 /**
  * ...泡泡龙算法
  * @author Kanon
@@ -21,7 +20,7 @@ public class Bubble
     //列数
     private var columns:int;
     //行数
-    private var rows:int;
+    private var _rows:int;
     //半径
     private var radius:Number;
     //碰撞检测范围
@@ -36,7 +35,7 @@ public class Bubble
                            rows:int, columns:int, radius:Number)
     {
         this.stage = stage;
-        this.rows = rows;
+        this._rows = rows;
         this.columns = columns;
         this.radius = radius;
         this.hitRange = radius * 2 - 5;
@@ -291,7 +290,9 @@ public class Bubble
                               vx:Number, vy:Number, 
                               color:uint):void
     {
-        if (!this.bubbleDict || !this.shotBubbleList) return;
+        if (!this.bubbleDict || 
+            !this.shotBubbleList || 
+            this.shotBubbleList.length > 0) return;
         var bVo:BubbleVo = new BubbleVo();
         bVo.x = x;
         bVo.y = y;
@@ -380,5 +381,9 @@ public class Bubble
         _range = value;
     }
     
+    /**
+     * 当前行数
+     */
+    public function get rows():int { return _rows; };
 }
 }
