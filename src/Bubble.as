@@ -22,10 +22,10 @@ public class Bubble
     private var columns:int;
     //行数
     private var rows:int;
-    //最大行数
-    private var maxRows:int;
     //半径
     private var radius:Number;
+    //碰撞检测范围
+    private var hitRange:Number;
     //外部容器
     private var stage:DisplayObjectContainer;
     //移动范围
@@ -33,14 +33,13 @@ public class Bubble
     //射出的泡泡列表
     private var shotBubbleList:Array;
     public function Bubble(stage:DisplayObjectContainer, 
-                           maxRows:int, rows:int,
-                           columns:int, radius:Number)
+                           rows:int, columns:int, radius:Number)
     {
         this.stage = stage;
-        this.maxRows = maxRows;
         this.rows = rows;
         this.columns = columns;
         this.radius = radius;
+        this.hitRange = radius * 2 - 5;
         this.initData();
         this.initDraw();
     }
@@ -60,9 +59,9 @@ public class Bubble
         //偶数行的数量
         var evenRowNum:int = this.rows % 2 == 0 ? this.rows / 2 : (this.rows + 1) / 2 - 1;
         var num:int = this.rows * this.columns - evenRowNum;
-        trace("数量", num);
+        trace("num", num);
         //循环行数
-        for (var row:int = 0; row < this.maxRows; row += 1)
+        for (var row:int = 0; row < this.rows; row += 1)
         {
             this.bubbleList[row] = [];
             if (row % 2 == 1) maxColumns = this.columns - 1; //双数行
@@ -151,10 +150,10 @@ public class Bubble
             shotBVo = this.shotBubbleList[i];
             if (shotBVo != bVo)
             {
-				if (MathUtil.distance(shotBVo.x, shotBVo.y, bVo.x, bVo.y) <= this.radius * 2)
+				if (MathUtil.distance(shotBVo.x, shotBVo.y, bVo.x, bVo.y) <= this.hitRange)
 				{
-                    bVo.display.alpha = .1;
 					this.shotBubbleList.splice(i, 1);
+                    //自动吸附
 					this.autoAbsorption(shotBVo, bVo);
 					break;
 				}
@@ -169,7 +168,8 @@ public class Bubble
      */
     private function autoAbsorption(shotBVo:BubbleVo, bVo:BubbleVo):void
     {
-		bVo.display.alpha = .8;
+        //判断是否超过最后一行
+        if (bVo.row + 1 >= this.rows) this.addNewRow();
         var arr:Array = this.getRoundBubblePos(bVo.row, bVo.column);
         var length:int = arr.length;
         //trace("length", length);
@@ -195,16 +195,13 @@ public class Bubble
                                "point":point } );
             }
         }
-        //return;
         //排序 最小距离在前
         disArr.sortOn("distance", Array.NUMERIC);
-        //TraceUtil.dump(disArr);
         var o:Object = disArr[0];
         i = o.index;
         //设置行列
         shotBVo.row = arr[i][0];
         shotBVo.column = arr[i][1];
-        trace(shotBVo.row, shotBVo.column);
         shotBVo.x = o.point.x;
         shotBVo.y = o.point.y;
         shotBVo.vx = 0;
@@ -220,7 +217,6 @@ public class Bubble
      */
     private function getRoundBubblePos(row:int, column:int):Array
     {
-        if (!this.bubbleList) return null;
         var arr:Array = [];
         //最大列数
         var maxColumns:int;
@@ -230,13 +226,9 @@ public class Bubble
         var bVo:BubbleVo;
         //左右2个
         if (column - 1 >= 0)
-        {
             arr.push([row, column - 1]);
-        }
         if (column + 1 < maxColumns)
-        {
             arr.push([row, column + 1]);
-        }
         //判断上下两行是单行或双行
         if ((row - 1) % 2 == 0)
         {
@@ -255,30 +247,35 @@ public class Bubble
         {
             if (column + index >= 0 && 
                 column + index < maxColumns)
-            {
                 arr.push([row - 1, column + index]);
-            }
             if (column >= 0 && 
                 column < maxColumns)
-            {
                 arr.push([row - 1, column]);
-            }
         }
+        
         //下面2个
-        if (row + 1 < this.maxRows)
-        {
-            if (column + index >= 0 && 
-                column + index < maxColumns)
-            {
-                arr.push([row + 1, column + index]);
-            }
-            if (column >= 0 && 
-                column < maxColumns)
-            {
-                arr.push([row + 1, column]);
-            }
-        }
+        if (column + index >= 0 && 
+            column + index < maxColumns)
+            arr.push([row + 1, column + index]);
+        if (column >= 0 && column < maxColumns)
+            arr.push([row + 1, column]);
         return arr;
+    }
+    
+    /**
+     * 新建一个空行
+     */
+    private function addNewRow():void
+    {
+        this.rows++;
+        var maxColumns:int;
+        if (this.rows % 2 == 1) maxColumns = this.columns - 1; //双数行
+        else maxColumns = this.columns; //单数行
+        this.bubbleList[this.rows - 1] = [];
+        for (var column:int = 0; column < maxColumns; column += 1)
+        {
+            this.bubbleList[this.rows - 1][column] = null;
+        }
     }
     
     //***********public function***********
@@ -294,8 +291,7 @@ public class Bubble
                               vx:Number, vy:Number, 
                               color:uint):void
     {
-        if (!this.bubbleDict || 
-            !this.shotBubbleList) return;
+        if (!this.bubbleDict || !this.shotBubbleList) return;
         var bVo:BubbleVo = new BubbleVo();
         bVo.x = x;
         bVo.y = y;
