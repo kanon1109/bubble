@@ -9,8 +9,6 @@ public class BubbleVo
 {
     /**颜色*/
     public var color:uint;
-    /**是否被检查过*/
-    public var isCheck:Boolean;
     /**用户数据*/
     public var display:DisplayObject;
     /**x坐标*/
@@ -23,9 +21,15 @@ public class BubbleVo
     public var vx:Number = 0;
     /**纵向向向量*/
     public var vy:Number = 0;
+    /**重力*/
+    public var g:Number = 0;
     /**行数*/
     public var row:int;
     /**列表数*/
     public var column:int;
+    /**是否待销毁*/
+    public var isRemove:Boolean;
+    /**是否检测过消除悬空*/
+    public var isCheck:Boolean;
 }
 }

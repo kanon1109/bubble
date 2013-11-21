@@ -1,6 +1,8 @@
 package  
 {
+import utils.Random;
 import event.BubbleEvent;
+import flash.display.MovieClip;
 import flash.display.Sprite;
 import flash.display.StageAlign;
 import flash.events.Event;
@@ -18,15 +20,23 @@ public class BubbleTest extends Sprite
     private var cannon:Cannon;
     private var aimMc:Sprite;
     private var radius:Number = 30;
+    private var color:uint;
+    private var colorType:int = 5;
+    private var cMc:MovieClip;
     public function BubbleTest() 
     {
         stage.align = StageAlign.TOP_LEFT;
-        this.bubble = new Bubble(this, 1, 6, this.radius, 5);
+        this.bubble = new Bubble(this, 1, 6, this.radius, this.colorType);
         this.bubble.addEventListener(BubbleEvent.UPDATE, updateHandler);
         this.bubble.range = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
         this.cannon = new Cannon(stage.stageWidth * .5, stage.stageHeight, 20);
         this.initUI();
-        this.addChild(new Stats());
+        this.color = Random.randint(1, this.colorType);
+        
+        this.cMc = this.getChildByName("c_mc") as MovieClip;
+        this.cMc.gotoAndStop(this.color);
+        
+        //this.addChild(new Stats());
         this.addEventListener(Event.ENTER_FRAME, loop);
         stage.addEventListener(MouseEvent.CLICK, mouseClickHander);
     }
@@ -41,7 +51,9 @@ public class BubbleTest extends Sprite
         this.cannon.aim(mouseX, mouseY);
         var vx:Number = Math.cos(this.cannon.angle) * this.cannon.power;
         var vy:Number = Math.sin(this.cannon.angle) * this.cannon.power;
-        this.bubble.addBubble(this.cannon.startX, this.cannon.startY - this.radius, vx, vy, 1);
+        this.bubble.shotBubble(this.cannon.startX, this.cannon.startY - this.radius, vx, vy, this.color);
+        this.color = Random.randint(1, this.colorType);
+        this.cMc.gotoAndStop(this.color);
     }
     
     /**
