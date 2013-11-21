@@ -10,6 +10,7 @@ import flash.geom.Rectangle;
 import flash.utils.Dictionary;
 import utils.MathUtil;
 import utils.Random;
+import utils.TraceUtil;
 /**
  * ...泡泡龙算法
  * @author Kanon
@@ -350,8 +351,6 @@ public class Bubble extends EventDispatcher
         var arr:Array;
         var length:int;
         var roundVo:BubbleVo;
-        var row:int;
-        var column:int;
         for (var row:int = 0; row < this._rows; row += 1)
         {
             if (row % 2 == 1) maxColumns = this.columns - 1; //双数行
@@ -363,24 +362,45 @@ public class Bubble extends EventDispatcher
                 if (bVo && !bVo.isRemove && !bVo.isCheck)
                 {
                     bVo.isCheck = true;
+					trace("bVo.row, bVo.column", bVo.row, bVo.column)
+					closeAry.push(roundVo);
                     arr = this.getRoundBubblePos(bVo.row, bVo.column);
                     length = arr.length;
+					//trace("length", length);
                     //查找周围是否有泡泡数据
                     for (var i:int = 0; i < length; i += 1) 
                     {
-                        row = arr[i][0];
-                        column = arr[i][1];
-                        roundVo = arr[i];
-                        roundVo = this.bubbleList[row][column];
+						//trace("arr[i][0], arr[i][1]", arr[i][0], arr[i][1])
+                        roundVo = this.bubbleList[arr[i][0]][arr[i][1]];
                         //如果有则设置状态，下次不再查找。
                         if (roundVo && !roundVo.isCheck)
                         {
                             roundVo.isCheck = true;
+							trace("roundVo.row, roundVo.column", roundVo.row, roundVo.column)
+							closeAry.push(roundVo);
                         }
                     }
                 }
             }
         }
+		
+		length = closeAry.length;
+		for each (bVo in this.bubbleDict) 
+		{
+			bVo.isCheck = false;
+			//bVo.isRemove = true;
+			/*bVo.g = 2;
+			for (i = 0; i < length; i += 1) 
+			{
+				roundVo = closeAry[i];
+				if (bVo.row == roundVo.row && 
+					bVo.column == roundVo.column)
+				{
+					bVo.g = 0;
+					bVo.isRemove = false;
+				}
+			}*/
+		}
     }
     
     /**
