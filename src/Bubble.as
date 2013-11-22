@@ -22,7 +22,9 @@ public class Bubble extends EventDispatcher
     //泡泡字典用于快速遍历泡泡并且让其移动
     private var bubbleDict:Dictionary;
     //存放下落泡泡字典
-    private var bubbleCloseDict:Dictionary;
+    private var fallBubbleDict:Dictionary;
+    //待销毁的泡泡列表
+    private var bubbleCloseAry:Array;
     //待保留的泡泡列表
     private var retainBubbleList:Array;
     //列数
@@ -43,18 +45,23 @@ public class Bubble extends EventDispatcher
     private var _range:Rectangle;
     //射出的泡泡列表
     private var shotBubbleVo:BubbleVo;
-	//泡泡龙事件
-	private var bubbleEvent:BubbleEvent;
+	//更新泡泡数据事件
+	private var updateBubbleEvent:BubbleEvent;
+    //销毁泡泡显示事件
 	private var removeBubbleEvent:BubbleEvent;
+    //最小链接长度
+    private var minLinkNum:int;
     public function Bubble(stage:DisplayObjectContainer, 
                            rows:int, columns:int, 
-						   radius:Number, colorType:int)
+						   radius:Number, colorType:int, 
+                           minLinkNum:int = 3)
     {
         this.stage = stage;
         this._rows = rows;
         this.columns = columns;
         this.radius = radius;
         this.colorType = colorType;
+        this.minLinkNum = minLinkNum;
         this.hitRange = radius * 2 - 5;
         this.initData();
         this.initEvent();
@@ -65,7 +72,7 @@ public class Bubble extends EventDispatcher
 	 */
 	private function initEvent():void 
 	{
-		this.bubbleEvent = new BubbleEvent(BubbleEvent.UPDATE);
+		this.updateBubbleEvent = new BubbleEvent(BubbleEvent.UPDATE);
 		this.removeBubbleEvent = new BubbleEvent(BubbleEvent.REMOVE_BUBBLE);
 	}
     
@@ -75,8 +82,9 @@ public class Bubble extends EventDispatcher
     private function initData():void
     {
         this.bubbleList = [];
+        this.bubbleCloseAry = [];
         this.bubbleDict = new Dictionary();
-        this.bubbleCloseDict = new Dictionary();
+        this.fallBubbleDict = new Dictionary();
         this.shotBubbleVo = null;
         var bVo:BubbleVo;
         //最大列数
@@ -149,12 +157,14 @@ public class Bubble extends EventDispatcher
                 this.autoAbsorption(this.shotBubbleVo, posAry);
                 //判断颜色类型
                 this.checkColorType(this.shotBubbleVo);
+                //清空待销毁的列表
+                this.clearBubbleCloseDict();
                 //消除悬空
                 this.removeFloating();
                 //销毁发射的泡泡
                 this.shotBubbleVo = null;
                 //发送更新事件
-                this.dispatchEvent(this.bubbleEvent);
+                this.dispatchEvent(this.updateBubbleEvent);
             }
         }
     }
@@ -215,15 +225,37 @@ public class Bubble extends EventDispatcher
             row = arr[i][0];
             column = arr[i][1];
             bVo = this.bubbleList[row][column];
-			if (bVo && bVo.color == shotBVo.color)
+			if (bVo && bVo.color == shotBVo.color && !bVo.isCheck)
 			{
-				this.removeBubble(bVo);
-                this.removeBubbleEvent.bVo = bVo;
-                this.dispatchEvent(this.removeBubbleEvent);
+                bVo.isCheck = true;
+                this.bubbleCloseAry.push(bVo);
 				this.checkColorType(bVo);
 			}
 		}
 	}
+    
+    /**
+     * 清空待销毁的列表
+     */
+    private function clearBubbleCloseDict():void
+    {
+        if (!this.bubbleCloseAry) return;
+        var bVo:BubbleVo;
+        var length:int = this.bubbleCloseAry.length;
+        trace("length", length);
+        for (var i:int = length - 1; i >= 0; i -= 1) 
+        {
+            bVo = this.bubbleCloseAry[i];
+            bVo.isCheck = false;
+            if (length >= this.minLinkNum)
+            {
+                this.removeBubble(bVo);
+                this.removeBubbleEvent.bVo = bVo;
+                this.dispatchEvent(this.removeBubbleEvent);
+            }
+            this.bubbleCloseAry.splice(i, 1);
+        }
+    }
 	
 	/**
 	 * 销毁泡泡
@@ -362,7 +394,7 @@ public class Bubble extends EventDispatcher
                     {
                         bVo.g = 2;
                         this.removeBubble(bVo);
-                        this.bubbleCloseDict[bVo] = bVo;
+                        this.fallBubbleDict[bVo] = bVo;
                     }
                 }
             }
@@ -439,11 +471,13 @@ public class Bubble extends EventDispatcher
                     this.pushBubble(this.shotBubbleVo, 0, column, point.x, point.y);
                     //判断颜色类型
                     this.checkColorType(this.shotBubbleVo);
+                    //清空待销毁的列表
+                    this.clearBubbleCloseDict();
                     //销毁发射的泡泡
                     this.shotBubbleVo = null;
                     //消除悬空
                     this.removeFloating();
-                    this.dispatchEvent(this.bubbleEvent);
+                    this.dispatchEvent(this.updateBubbleEvent);
                     break;
                 }
             }
@@ -477,16 +511,16 @@ public class Bubble extends EventDispatcher
      */
     private function bubbleFalling(rect:Rectangle):void
     {
-        if (!this.bubbleCloseDict) return;
+        if (!this.fallBubbleDict) return;
         var bVo:BubbleVo;
-        for each (bVo in this.bubbleCloseDict) 
+        for each (bVo in this.fallBubbleDict) 
         {
             bVo.vy += bVo.g;
             bVo.y += bVo.vy;
             if (bVo.y >= rect.bottom)
             {
                 bVo.g = 0;
-                delete this.bubbleCloseDict[bVo];
+                delete this.fallBubbleDict[bVo];
                 this.removeBubbleEvent.bVo = bVo;
                 this.dispatchEvent(this.removeBubbleEvent);
             }
@@ -508,8 +542,8 @@ public class Bubble extends EventDispatcher
             arr.push(bVo);
         }
         //将下落的泡泡放入列表
-        if (!this.bubbleCloseDict) return null;
-        for each(bVo in this.bubbleCloseDict) 
+        if (!this.fallBubbleDict) return null;
+        for each(bVo in this.fallBubbleDict) 
         {
             arr.push(bVo);
         }
@@ -590,9 +624,10 @@ public class Bubble extends EventDispatcher
         this.retainBubbleList = null;
         this.shotBubbleVo = null;
         this.bubbleDict = null;
+        this.bubbleCloseAry = null;
         this.range = null;
         this.stage = null;
-        this.bubbleCloseDict = null;
+        this.fallBubbleDict = null;
     }
     
     /**
