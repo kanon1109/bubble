@@ -367,6 +367,7 @@ public class Bubble extends EventDispatcher
             }
         }
         
+        //遍历整个地图数据判断哪些泡泡不在待保留的列表中，销毁并且放入下落列表中。
         var maxColumns:int;
         var retainBubbleVo:BubbleVo;
         var length:int = this.retainBubbleList.length;
@@ -426,7 +427,7 @@ public class Bubble extends EventDispatcher
     }
     
     /**
-     * 判断周围的是否泡泡
+     * 判断周围的是否泡泡，并且把泡泡数据放入列表中
      * @param	bVo     当前泡泡数据
      */
     private function checkRoundBubble(bVo:BubbleVo):void
