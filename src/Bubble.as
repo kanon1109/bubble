@@ -21,6 +21,10 @@ public class Bubble extends EventDispatcher
     private var bubbleList:Array;
     //泡泡字典用于快速遍历泡泡并且让其移动
     private var bubbleDict:Dictionary;
+    //存放下落泡泡字典
+    private var bubbleCloseDict:Dictionary;
+    //待保留的泡泡列表
+    private var retainBubbleList:Array;
     //列数
     private var columns:int;
     //行数
@@ -41,6 +45,7 @@ public class Bubble extends EventDispatcher
     private var shotBubbleVo:BubbleVo;
 	//泡泡龙事件
 	private var bubbleEvent:BubbleEvent;
+	private var removeBubbleEvent:BubbleEvent;
     public function Bubble(stage:DisplayObjectContainer, 
                            rows:int, columns:int, 
 						   radius:Number, colorType:int)
@@ -52,7 +57,6 @@ public class Bubble extends EventDispatcher
         this.colorType = colorType;
         this.hitRange = radius * 2 - 5;
         this.initData();
-        this.initDraw();
         this.initEvent();
     }
 	
@@ -62,6 +66,7 @@ public class Bubble extends EventDispatcher
 	private function initEvent():void 
 	{
 		this.bubbleEvent = new BubbleEvent(BubbleEvent.UPDATE);
+		this.removeBubbleEvent = new BubbleEvent(BubbleEvent.REMOVE_BUBBLE);
 	}
     
     /**
@@ -71,6 +76,7 @@ public class Bubble extends EventDispatcher
     {
         this.bubbleList = [];
         this.bubbleDict = new Dictionary();
+        this.bubbleCloseDict = new Dictionary();
         this.shotBubbleVo = null;
         var bVo:BubbleVo;
         //最大列数
@@ -123,35 +129,6 @@ public class Bubble extends EventDispatcher
         //行间距
         var dis:Number = this.radius - this.radius * Math.cos(MathUtil.dgs2rds(45));
         return new Point(startX + column * this.radius * 2, startY + (row * this.radius * 2 - row * dis))
-    }
-    
-    /**
-     * 初始化绘制泡泡数据
-     */
-    private function initDraw():void
-    {
-        var bVo:BubbleVo;
-        for each (bVo in this.bubbleDict) 
-        {
-            this.drawBubble(bVo);
-        }
-    }
-    
-    /**
-     * 绘制一个泡泡
-     * @param	bVo   泡泡数据
-     */
-    private function drawBubble(bVo:BubbleVo):void
-    {
-		var color:Array = [null, 0xFF00FF, 0xFFFF00, 0x0000FF, 0xCCFF00, 0x00CCFF];
-        bVo.display = new Sprite();
-        Sprite(bVo.display).graphics.lineStyle(1, 0);
-        Sprite(bVo.display).graphics.beginFill(color[bVo.color]);
-        Sprite(bVo.display).graphics.drawCircle(0, 0, bVo.radius);
-        Sprite(bVo.display).graphics.endFill();
-        bVo.display.x = bVo.x;
-        bVo.display.y = bVo.y;
-        this.stage.addChild(bVo.display);
     }
     
     /**
@@ -241,6 +218,8 @@ public class Bubble extends EventDispatcher
 			if (bVo && bVo.color == shotBVo.color)
 			{
 				this.removeBubble(bVo);
+                this.removeBubbleEvent.bVo = bVo;
+                this.dispatchEvent(this.removeBubbleEvent);
 				this.checkColorType(bVo);
 			}
 		}
@@ -256,9 +235,6 @@ public class Bubble extends EventDispatcher
 		this.bubbleList[bVo.row][bVo.column] = null;
 		delete this.bubbleDict[bVo];
         this._bubbleNum--;
-		if (bVo.display && bVo.display.parent)
-			bVo.display.parent.removeChild(bVo.display);
-		bVo.display = null;
 	}
 	
     /**
@@ -344,63 +320,101 @@ public class Bubble extends EventDispatcher
      */
     private function removeFloating():void
     {
-        //待销毁的列表
-        var closeAry:Array = [];
+        this.retainBubbleList = [];
         var bVo:BubbleVo;
-        var maxColumns:int;
         var arr:Array;
-        var length:int;
-        var roundVo:BubbleVo;
+        //循环列数
+        for (var column:int = 0; column < this.columns; column += 1)
+        {
+            bVo = this.bubbleList[0][column];
+            if (bVo && !bVo.isCheck)
+            {
+                bVo.isCheck = true;
+                this.retainBubbleList.push(bVo);
+                this.checkRoundBubble(bVo);
+            }
+        }
+        
+        var maxColumns:int;
+        var retainBubbleVo:BubbleVo;
+        var length:int = this.retainBubbleList.length;
         for (var row:int = 0; row < this._rows; row += 1)
         {
             if (row % 2 == 1) maxColumns = this.columns - 1; //双数行
             else maxColumns = this.columns; //单数行
-            //循环列数
-            for (var column:int = 0; column < maxColumns; column += 1)
+            for (column = 0; column < maxColumns; column += 1)
             {
                 bVo = this.bubbleList[row][column];
-                if (bVo && !bVo.isRemove && !bVo.isCheck)
+                if (bVo)
                 {
-                    bVo.isCheck = true;
-					trace("bVo.row, bVo.column", bVo.row, bVo.column)
-					closeAry.push(roundVo);
-                    arr = this.getRoundBubblePos(bVo.row, bVo.column);
-                    length = arr.length;
-					//trace("length", length);
-                    //查找周围是否有泡泡数据
                     for (var i:int = 0; i < length; i += 1) 
                     {
-						//trace("arr[i][0], arr[i][1]", arr[i][0], arr[i][1])
-                        roundVo = this.bubbleList[arr[i][0]][arr[i][1]];
-                        //如果有则设置状态，下次不再查找。
-                        if (roundVo && !roundVo.isCheck)
+                        retainBubbleVo = this.retainBubbleList[i];
+                        if (bVo.row == retainBubbleVo.row && 
+                            bVo.column == retainBubbleVo.column)
                         {
-                            roundVo.isCheck = true;
-							trace("roundVo.row, roundVo.column", roundVo.row, roundVo.column)
-							closeAry.push(roundVo);
+                            bVo.isCheck = false;
+                            break;
                         }
+                    }
+                    //如果不在保留列表中则设置重力。
+                    if (i == length)
+                    {
+                        bVo.g = 2;
+                        this.removeBubble(bVo);
+                        this.bubbleCloseDict[bVo] = bVo;
                     }
                 }
             }
         }
-		
-		length = closeAry.length;
-		for each (bVo in this.bubbleDict) 
-		{
-			bVo.isCheck = false;
-			//bVo.isRemove = true;
-			/*bVo.g = 2;
-			for (i = 0; i < length; i += 1) 
-			{
-				roundVo = closeAry[i];
-				if (bVo.row == roundVo.row && 
-					bVo.column == roundVo.column)
-				{
-					bVo.g = 0;
-					bVo.isRemove = false;
-				}
-			}*/
-		}
+    }
+    
+    /**
+     * 获取周围泡泡
+     * @param	row     行坐标
+     * @param	column  列坐标
+     * @return  泡泡列表
+     */
+    private function getRoundBubble(row:int, column:int):Array
+    {
+        var bubbleAry:Array = [];
+        var arr:Array = this.getRoundBubblePos(row, column);
+        var length:int = arr.length;
+        var roundVo:BubbleVo;
+        var roundRow:int;
+        var roundColumn:int;
+        for (var i:int = 0; i < length; i += 1) 
+        {
+            roundRow = arr[i][0];
+            roundColumn = arr[i][1];
+            roundVo = this.bubbleList[roundRow][roundColumn];
+            if (roundVo) bubbleAry.push(roundVo);
+        }
+        return bubbleAry;
+    }
+    
+    /**
+     * 判断周围的是否泡泡
+     * @param	bVo     当前泡泡数据
+     */
+    private function checkRoundBubble(bVo:BubbleVo):void
+    {
+        if (!bVo) return;
+        var arr:Array = this.getRoundBubble(bVo.row, bVo.column);
+        if (arr.length == 0) return;
+        var length:int = arr.length;
+        var roundVo:BubbleVo;
+        for (var i:int = 0; i < length; i += 1) 
+        {
+            roundVo = arr[i];
+            //如果判断过则不再进行判断
+            if (!roundVo.isCheck)
+            {
+                roundVo.isCheck = true;
+                this.retainBubbleList.push(roundVo);
+                this.checkRoundBubble(roundVo);
+            }
+        }
     }
     
     /**
@@ -457,20 +471,65 @@ public class Bubble extends EventDispatcher
         this._bubbleNum++;
     }
     
+    /**
+     * 泡泡下落
+     * @param	rect   下落最大范围
+     */
+    private function bubbleFalling(rect:Rectangle):void
+    {
+        if (!this.bubbleCloseDict) return;
+        var bVo:BubbleVo;
+        for each (bVo in this.bubbleCloseDict) 
+        {
+            bVo.vy += bVo.g;
+            bVo.y += bVo.vy;
+            if (bVo.y >= rect.bottom)
+            {
+                bVo.g = 0;
+                delete this.bubbleCloseDict[bVo];
+                this.removeBubbleEvent.bVo = bVo;
+                this.dispatchEvent(this.removeBubbleEvent);
+            }
+        }
+    }
+    
     //***********public function***********
     /**
+     * 获取泡泡数据列表
+     * @return  泡泡数据列表
+     */
+    public function getBubbleList():Array
+    {
+        if (!this.bubbleDict) return null;
+        var arr:Array = [];
+        var bVo:BubbleVo;
+        for each (bVo in this.bubbleDict) 
+        {
+            arr.push(bVo);
+        }
+        //将下落的泡泡放入列表
+        if (!this.bubbleCloseDict) return null;
+        for each(bVo in this.bubbleCloseDict) 
+        {
+            arr.push(bVo);
+        }
+        return arr;
+    }
+    
+    /**
      * 发射一个泡泡
-     * @param	x      起始位置
-     * @param	y      起始位置
+     * @param	x           起始x位置
+     * @param	y           起始y位置
      * @param	vx          x向量
      * @param	vy          y向量
      * @param	color       颜色
+     * @return  被发射的泡泡数据
      */
     public function shotBubble(x:Number, y:Number, 
                                vx:Number, vy:Number, 
-                               color:uint):void
+                               color:uint):BubbleVo
     {
-        if (!this.bubbleDict || this.shotBubbleVo) return;
+        if (!this.bubbleDict || this.shotBubbleVo) return null;
         this.shotBubbleVo = new BubbleVo();
         this.shotBubbleVo.x = x;
         this.shotBubbleVo.y = y;
@@ -479,7 +538,7 @@ public class Bubble extends EventDispatcher
         this.shotBubbleVo.color = color;
         this.shotBubbleVo.radius = 30;
         this.bubbleDict[this.shotBubbleVo] = this.shotBubbleVo;
-        this.drawBubble(this.shotBubbleVo);
+        return shotBubbleVo;
     }
     
     /**
@@ -498,23 +557,7 @@ public class Bubble extends EventDispatcher
             this.hitTest(bVo);
         }
         this.checkBubbleShotRange();
-    }
-    
-    /**
-     * 渲染
-     */
-    public function render():void
-    {
-        if (!this.bubbleDict) return;
-        var bVo:BubbleVo;
-        for each (bVo in this.bubbleDict) 
-        {
-            if (bVo.display)
-            {
-                bVo.display.x = bVo.x;
-                bVo.display.y = bVo.y;
-            }
-        }
+        this.bubbleFalling(this.range);
     }
     
     /**
@@ -538,16 +581,18 @@ public class Bubble extends EventDispatcher
         var bVo:BubbleVo;
         for each (bVo in this.bubbleDict)
         {
-            if (bVo.display && 
-                bVo.display.parent)
-                bVo.display.parent.removeChild(bVo.display);
-            bVo.display = null;
+            bVo.vx = 0;
+            bVo.vy = 0;
+            bVo.g = 0;
+            delete this.bubbleDict[bVo];
         }
         this.bubbleList = null;
+        this.retainBubbleList = null;
         this.shotBubbleVo = null;
         this.bubbleDict = null;
         this.range = null;
         this.stage = null;
+        this.bubbleCloseDict = null;
     }
     
     /**

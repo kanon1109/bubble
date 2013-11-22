@@ -1,5 +1,6 @@
-package event 
+﻿package event 
 {
+import data.BubbleVo;
 import flash.events.Event;
 /**
  * ...泡泡龙事件
@@ -7,15 +8,21 @@ import flash.events.Event;
  */
 public class BubbleEvent extends Event 
 {
+    /**更新泡泡数量事件*/
 	public static const UPDATE:String = "update";
-	public function BubbleEvent(type:String, bubbles:Boolean=false, cancelable:Boolean=false) 
+    /**销毁泡泡显示事件*/
+	public static const REMOVE_BUBBLE:String = "removeBubble";
+    /**泡泡数据*/
+    public var bVo:BubbleVo;
+	public function BubbleEvent(type:String, bVo:BubbleVo=null, bubbles:Boolean=false, cancelable:Boolean=false) 
 	{ 
+        this.bVo = bVo;
 		super(type, bubbles, cancelable);
 	} 
 	
 	public override function clone():Event 
 	{ 
-		return new BubbleEvent(type, bubbles, cancelable);
+		return new BubbleEvent(type, bVo, bubbles, cancelable);
 	} 
 	
 	public override function toString():String 

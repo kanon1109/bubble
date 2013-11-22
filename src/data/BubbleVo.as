@@ -10,7 +10,7 @@ public class BubbleVo
     /**颜色*/
     public var color:uint;
     /**用户数据*/
-    public var display:DisplayObject;
+    public var userData:*;
     /**x坐标*/
     public var x:Number;
     /**y坐标*/
