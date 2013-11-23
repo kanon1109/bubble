@@ -9,6 +9,7 @@ import flash.display.StageAlign;
 import flash.events.Event;
 import flash.events.MouseEvent;
 import flash.geom.Rectangle;
+import flash.utils.getTimer;
 import utils.MathUtil;
 import utils.Random;
 /**
@@ -41,7 +42,7 @@ public class BubbleTest extends Sprite
     private function init():void 
     {
         stage.align = StageAlign.TOP_LEFT;
-        this.bubble = new Bubble(this, 6, 6, this.radius, this.colorType);
+        this.bubble = new Bubble(this, 0, 6, this.radius, this.colorType);
         this.bubble.addEventListener(BubbleEvent.UPDATE, updateHandler);
         this.bubble.addEventListener(BubbleEvent.REMOVE_BUBBLE, removeBubbleHandler);
         this.bubble.range = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
@@ -160,7 +161,12 @@ public class BubbleTest extends Sprite
     {
         this.cannon.aim(mouseX, mouseY);
         this.aimMc.rotation = MathUtil.rds2dgs(this.cannon.angle);
+		//trace(" this.aimMc.rotation", this.aimMc.rotation);
+		var t:Number = getTimer();
         this.bubble.update();
+		var t2:Number = getTimer() -t;
+		if (t2 > 0)
+			trace(t2);
         this.render();
     }
 }

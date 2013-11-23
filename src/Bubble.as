@@ -93,6 +93,12 @@ public class Bubble extends EventDispatcher
         //偶数行的数量
         var evenRowNum:int = this._rows % 2 == 0 ? this._rows / 2 : (this._rows + 1) / 2 - 1;
         var num:int = this._rows * this.columns - evenRowNum;
+		//如果行数设置为0则数量为0行数设置为1
+		if (this._rows <= 0) 
+		{
+			num = 0;
+			this._rows = 1;
+		}
 		this._bubbleNum = num;
         //循环行数
         for (var row:int = 0; row < this._rows; row += 1)
@@ -367,39 +373,29 @@ public class Bubble extends EventDispatcher
             }
         }
         
-        //遍历整个地图数据判断哪些泡泡不在待保留的列表中，销毁并且放入下落列表中。
-        var maxColumns:int;
+        //遍历整个泡泡列表，如果不在待保留的列表中则销毁并且放入下落列表中。
         var retainBubbleVo:BubbleVo;
         var length:int = this.retainBubbleList.length;
-        for (var row:int = 0; row < this._rows; row += 1)
-        {
-            if (row % 2 == 1) maxColumns = this.columns - 1; //双数行
-            else maxColumns = this.columns; //单数行
-            for (column = 0; column < maxColumns; column += 1)
-            {
-                bVo = this.bubbleList[row][column];
-                if (bVo)
-                {
-                    for (var i:int = 0; i < length; i += 1) 
-                    {
-                        retainBubbleVo = this.retainBubbleList[i];
-                        if (bVo.row == retainBubbleVo.row && 
-                            bVo.column == retainBubbleVo.column)
-                        {
-                            bVo.isCheck = false;
-                            break;
-                        }
-                    }
-                    //如果不在保留列表中则设置重力。
-                    if (i == length)
-                    {
-                        bVo.g = 2;
-                        this.removeBubble(bVo);
-                        this.fallBubbleDict[bVo] = bVo;
-                    }
-                }
-            }
-        }
+		for each (bVo in this.bubbleDict) 
+		{
+			for (var i:int = 0; i < length; i += 1) 
+			{
+				retainBubbleVo = this.retainBubbleList[i];
+				if (bVo.row == retainBubbleVo.row && 
+					bVo.column == retainBubbleVo.column)
+				{
+					bVo.isCheck = false;
+					break;
+				}
+			}
+			//如果不在保留列表中则设置重力。
+			if (i == length)
+			{
+				bVo.g = 2;
+				this.removeBubble(bVo);
+				this.fallBubbleDict[bVo] = bVo;
+			}
+		}
     }
     
     /**
@@ -463,7 +459,7 @@ public class Bubble extends EventDispatcher
         for (var column:int = 0; column < this.columns; column += 1) 
         {
             point = this.getBubblePos(0, column);
-            if (MathUtil.distance(this.shotBubbleVo.x, this.shotBubbleVo.y, point.x, point.y) <= this.radius)
+			if (this.shotBubbleVo.y <= this.radius && Math.abs(this.shotBubbleVo.x - point.x) <= this.radius)
             {
                 bVo = this.bubbleList[0][column];
                 if (!bVo)
@@ -479,10 +475,18 @@ public class Bubble extends EventDispatcher
                     //消除悬空
                     this.removeFloating();
                     this.dispatchEvent(this.updateBubbleEvent);
-                    break;
+                    return;
                 }
             }
         }
+		//防止穿透bug
+		if (this.shotBubbleVo.y < this._range.top - this.shotBubbleVo.radius)
+		{
+			delete this.bubbleDict[this.shotBubbleVo];
+			this.removeBubbleEvent.bVo = this.shotBubbleVo;
+			this.dispatchEvent(this.removeBubbleEvent);
+			this.shotBubbleVo = null;
+		}
     }
     
     /**
@@ -573,7 +577,7 @@ public class Bubble extends EventDispatcher
         this.shotBubbleVo.color = color;
         this.shotBubbleVo.radius = 30;
         this.bubbleDict[this.shotBubbleVo] = this.shotBubbleVo;
-        return shotBubbleVo;
+        return this.shotBubbleVo;
     }
     
     /**
