@@ -3,14 +3,11 @@ package
 import data.BubbleVo;
 import event.BubbleEvent;
 import flash.display.DisplayObjectContainer;
-import flash.display.Sprite;
 import flash.events.EventDispatcher;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 import flash.utils.Dictionary;
 import utils.MathUtil;
-import utils.Random;
-import utils.TraceUtil;
 /**
  * ...泡泡龙算法
  * @author Kanon
@@ -35,8 +32,6 @@ public class Bubble extends EventDispatcher
     private var _bubbleNum:int;
     //半径
     private var radius:Number;
-	//颜色种类
-    private var colorType:uint;
     //碰撞检测范围
     private var hitRange:Number;
     //外部容器
@@ -51,16 +46,17 @@ public class Bubble extends EventDispatcher
 	private var removeBubbleEvent:BubbleEvent;
     //最小链接长度
     private var minLinkNum:int;
+	//起始类型是靠右还是靠左 false为左 用于添加第一行时计算定位使用。
+	private var startType:Boolean;
     public function Bubble(stage:DisplayObjectContainer, 
-                           rows:int, columns:int, 
-						   radius:Number, colorType:int, 
+                           columns:int, 
+						   radius:Number, 
                            minLinkNum:int = 3)
     {
         this.stage = stage;
-        this._rows = rows;
+        this._rows = 0;
         this.columns = columns;
         this.radius = radius;
-        this.colorType = colorType;
         this.minLinkNum = minLinkNum;
         this.hitRange = radius * 2 - 5;
         this.initData();
@@ -86,46 +82,6 @@ public class Bubble extends EventDispatcher
         this.bubbleDict = new Dictionary();
         this.fallBubbleDict = new Dictionary();
         this.shotBubbleVo = null;
-        var bVo:BubbleVo;
-        //最大列数
-        var maxColumns:int;
-        var point:Point;
-        //偶数行的数量
-        var evenRowNum:int = this._rows % 2 == 0 ? this._rows / 2 : (this._rows + 1) / 2 - 1;
-        var num:int = this._rows * this.columns - evenRowNum;
-		//如果行数设置为0则数量为0行数设置为1
-		if (this._rows <= 0) 
-		{
-			num = 0;
-			this._rows = 1;
-		}
-		this._bubbleNum = num;
-        //循环行数
-        for (var row:int = 0; row < this._rows; row += 1)
-        {
-            this.bubbleList[row] = [];
-            if (row % 2 == 1) maxColumns = this.columns - 1; //双数行
-            else maxColumns = this.columns; //单数行
-            //循环列数
-            for (var column:int = 0; column < maxColumns; column += 1)
-            {
-                if (num > 0)
-                {
-                    bVo = new BubbleVo();
-                    bVo.color = Random.randint(1, this.colorType);
-                    bVo.radius = this.radius;
-                    bVo.row = row;
-                    bVo.column = column;
-                    point = this.getBubblePos(row, column);
-                    bVo.x = point.x;
-                    bVo.y = point.y;
-                    this.bubbleList[row][column] = bVo;
-                    this.bubbleDict[bVo] = bVo;
-                    num--;
-                }
-                else this.bubbleList[row][column] = null;
-            }
-        }
     }
     
     /**
@@ -138,7 +94,11 @@ public class Bubble extends EventDispatcher
     {
         var startX:Number;
         var startY:Number = this.radius;
-        if (row % 2 == 0) startX = this.radius; //单数行
+		//根据起始位置类型判断单双行泡泡的位置
+		var num:int;
+		if (!this.startType) num = 0;
+		else num = 1;
+        if (row % 2 == num) startX = this.radius; //单数行
         else startX = this.radius * 2; //双数行 起始位置向前移动一个半径距离
         //行间距
         var dis:Number = this.radius - this.radius * Math.cos(MathUtil.dgs2rds(45));
@@ -248,7 +208,6 @@ public class Bubble extends EventDispatcher
         if (!this.bubbleCloseAry) return;
         var bVo:BubbleVo;
         var length:int = this.bubbleCloseAry.length;
-        trace("length", length);
         for (var i:int = length - 1; i >= 0; i -= 1) 
         {
             bVo = this.bubbleCloseAry[i];
@@ -285,52 +244,46 @@ public class Bubble extends EventDispatcher
     private function getRoundBubblePos(row:int, column:int, dir:int = 0):Array
     {
         var arr:Array = [];
-        //最大列数
-        var maxColumns:int;
         var index:int;
-        if (row % 2 == 0) maxColumns = this.columns; //单行
-        else maxColumns = this.columns - 1; //双行
         var bVo:BubbleVo;
         if (dir == 0 || dir == 1)
         {
             //左右2个
             if (column - 1 >= 0)
                 arr.push([row, column - 1]);
-            if (column + 1 < maxColumns)
+            if (column + 1 < this.columns)
                 arr.push([row, column + 1]);
         }
         if (dir == 0 || dir == 2)
         {
             //判断上下两行是单行或双行
-            if ((row - 1) % 2 == 0)
-            {
-                //单行
-                index = 1;
-                maxColumns = this.columns;
-            }
-            else
-            {
-                //双行
-                index = -1;
-                maxColumns = this.columns - 1;
-            }
+			if (!this.startType)
+			{
+				if ((row - 1) % 2 == 0) index = 1; //单行
+				else index = -1; //双行
+			}
+			else
+			{
+				if ((row - 1) % 2 == 0) index = -1; //单行
+				else index = 1; //双行
+			}
             //上面2个
             if (row - 1 >= 0)
             {
                 if (column + index >= 0 && 
-                    column + index < maxColumns)
+                    column + index < this.columns)
                     arr.push([row - 1, column + index]);
                 if (column >= 0 && 
-                    column < maxColumns)
+                    column < this.columns)
                     arr.push([row - 1, column]);
             }
             //下面2个
             if (row + 1 < this._rows)
             {
                 if (column + index >= 0 && 
-                    column + index < maxColumns)
+                    column + index < this.columns)
                     arr.push([row + 1, column + index]);
-                if (column >= 0 && column < maxColumns)
+                if (column >= 0 && column < this.columns)
                     arr.push([row + 1, column]);
             }
         }
@@ -343,11 +296,8 @@ public class Bubble extends EventDispatcher
     private function addNewEmptyRow():void
     {
         this._rows++;
-        var maxColumns:int;
-        if (this._rows % 2 == 1) maxColumns = this.columns - 1; //双数行
-        else maxColumns = this.columns; //单数行
         this.bubbleList[this._rows - 1] = [];
-        for (var column:int = 0; column < maxColumns; column += 1)
+        for (var column:int = 0; column < this.columns; column += 1)
         {
             this.bubbleList[this._rows - 1][column] = null;
         }
@@ -611,6 +561,66 @@ public class Bubble extends EventDispatcher
             vo.x > rect.right - vo.radius)
             vo.vx *= -1;
     }
+	
+	/**
+	 * 增加一个新行
+	 * @param	colorAry		颜色数组
+	 */
+	public function addLine(colorAry:Array):Array
+	{
+		this.startType = !this.startType;
+		this.addNewEmptyRow();
+		var bVo:BubbleVo;
+		var point:Point;
+		var column:int;
+		for (var row:int = this._rows - 1; row >= 0; row -= 1)
+        {
+            //循环列数
+            for (column = 0; column < this.columns; column += 1)
+            {
+				bVo = this.bubbleList[row][column];
+				if (bVo)
+				{
+					bVo.row = row + 1;
+					point = this.getBubblePos(row + 1, column);
+					bVo.y = point.y;
+					this.bubbleList[row + 1][column] = bVo;
+					this.bubbleList[row][column] = null;
+				}
+			}
+		}
+		
+		var length:int;
+		if (colorAry.length < this.columns)
+		{
+			//如果长度不足则自动补足
+			length = this.columns - colorAry.length;
+			for (var i:int = 0; i < length; i += 1)
+			{
+				colorAry.concat(colorAry[colorAry.length - 1]);
+			}
+		}
+		else if (colorAry.length > this.columns)
+		{
+			//如果长度超过则删除多余
+			length = colorAry.length - this.columns;
+			colorAry.splice(this.columns - 1, length);
+		}
+		
+		var arr:Array = [];
+		for (column = 0; column < this.columns; column += 1)
+		{
+			bVo = new BubbleVo();
+			bVo.color = colorAry[column];
+			bVo.radius = this.radius;
+			point = this.getBubblePos(0, column);
+			this.pushBubble(bVo, 0, column, point.x, point.y);
+			this.bubbleDict[bVo] = bVo;
+			this.dispatchEvent(this.updateBubbleEvent);
+			arr.push(bVo);
+		}
+		return arr;
+	}
 	
     /**
      * 销毁

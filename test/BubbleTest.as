@@ -7,6 +7,7 @@ import flash.display.MovieClip;
 import flash.display.Sprite;
 import flash.display.StageAlign;
 import flash.events.Event;
+import flash.events.KeyboardEvent;
 import flash.events.MouseEvent;
 import flash.geom.Rectangle;
 import flash.utils.getTimer;
@@ -28,13 +29,19 @@ public class BubbleTest extends Sprite
     private var colorAry:Array = [null, 0xFF00FF, 0xFFFF00, 0x0000FF, 0xCCFF00, 0x00CCFF];
     public function BubbleTest() 
     {
-        
         this.init();
-        this.initBubbleDraw();
         this.initUI();
         this.addEventListener(Event.ENTER_FRAME, loop);
         stage.addEventListener(MouseEvent.CLICK, mouseClickHander);
+        stage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDownHandler);
     }
+	
+	private function onKeyDownHandler(event:KeyboardEvent):void 
+	{
+		var arr:Array = this.bubble.addLine([Random.randint(1, this.colorType), Random.randint(1, this.colorType), 3, 4, 5, 5]);
+		this.drawLineBubble(arr);
+		this.render();
+	}
     
     /**
      * 初始化
@@ -42,13 +49,18 @@ public class BubbleTest extends Sprite
     private function init():void 
     {
         stage.align = StageAlign.TOP_LEFT;
-        this.bubble = new Bubble(this, 0, 6, this.radius, this.colorType);
+        this.bubble = new Bubble(this, 6, this.radius);
         this.bubble.addEventListener(BubbleEvent.UPDATE, updateHandler);
         this.bubble.addEventListener(BubbleEvent.REMOVE_BUBBLE, removeBubbleHandler);
         this.bubble.range = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);
         this.cannon = new Cannon(stage.stageWidth * .5, stage.stageHeight, 20);
         this.color = Random.randint(1, this.colorType);
-    }
+		for (var i:int = 0; i < 5; i++) 
+		{
+			this.bubble.addLine([Random.randint(1, this.colorType), Random.randint(1, this.colorType), 3, 4, 5, 5])
+		}
+		this.drawLineBubble(this.bubble.getBubbleList());
+	}
     
     /**
      * 初始化UI
@@ -64,28 +76,15 @@ public class BubbleTest extends Sprite
     }
     
     /**
-     * 初始化泡泡的显示对象
-     */
-    private function initBubbleDraw():void
-    {
-        var arr:Array = this.bubble.getBubbleList();
-        var length:int = arr.length;
-        var bVo:BubbleVo;
-        for (var i:int = 0; i < length; i++) 
-        {
-            bVo = arr[i];
-            this.drawBubble(bVo);
-        }
-    }
-    
-    /**
      * 绘制一个泡泡显示对象
      * @param	bVo    泡泡数据
      */
     private function drawBubble(bVo:BubbleVo):void
     {
         if (!bVo) return;
-        bVo.userData = new Sprite();
+		if (bVo.userData && bVo.userData is Sprite)
+			Sprite(bVo.userData).graphics.clear();
+		else bVo.userData = new Sprite();
         Sprite(bVo.userData).graphics.lineStyle(1, 0);
         Sprite(bVo.userData).graphics.beginFill(this.colorAry[bVo.color]);
         Sprite(bVo.userData).graphics.drawCircle(0, 0, bVo.radius);
@@ -155,13 +154,25 @@ public class BubbleTest extends Sprite
         this.color = Random.randint(1, this.colorType);
         this.cMc.gotoAndStop(this.color);
     }
+	
+	
+	private function drawLineBubble(bubbleAry:Array):void
+	{
+		var bVo:BubbleVo;
+		var length:int = bubbleAry.length;
+		for (var i:int = 0; i < length; i += 1)
+		{
+			bVo = bubbleAry[i];
+			this.drawBubble(bVo);
+		}
+	}
+	
     
     //主循环
     private function loop(event:Event):void 
     {
         this.cannon.aim(mouseX, mouseY);
         this.aimMc.rotation = MathUtil.rds2dgs(this.cannon.angle);
-		//trace(" this.aimMc.rotation", this.aimMc.rotation);
 		var t:Number = getTimer();
         this.bubble.update();
 		var t2:Number = getTimer() -t;
