@@ -27,8 +27,6 @@ public class BubbleVo
     public var row:int;
     /**列表数*/
     public var column:int;
-    /**是否待销毁*/
-    public var isRemove:Boolean;
     /**是否检测过消除悬空*/
     public var isCheck:Boolean;
 }

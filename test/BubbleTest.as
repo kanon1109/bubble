@@ -10,6 +10,7 @@ import flash.events.Event;
 import flash.events.KeyboardEvent;
 import flash.events.MouseEvent;
 import flash.geom.Rectangle;
+import flash.utils.Dictionary;
 import flash.utils.getTimer;
 import utils.MathUtil;
 import utils.Random;
@@ -27,6 +28,7 @@ public class BubbleTest extends Sprite
     private var colorType:int = 5;
     private var cMc:MovieClip;
     private var colorAry:Array = [null, 0xFF00FF, 0xFFFF00, 0x0000FF, 0xCCFF00, 0x00CCFF];
+	private var fallList:Dictionary;
     public function BubbleTest() 
     {
         this.init();
@@ -40,7 +42,6 @@ public class BubbleTest extends Sprite
 	{
 		var arr:Array = this.bubble.addLine([Random.randint(1, this.colorType), Random.randint(1, this.colorType), 3, 4, 5, 5]);
 		this.drawLineBubble(arr);
-		this.render();
 	}
     
     /**
@@ -49,6 +50,7 @@ public class BubbleTest extends Sprite
     private function init():void 
     {
         stage.align = StageAlign.TOP_LEFT;
+		this.fallList = new Dictionary();
         this.bubble = new Bubble(this, 6, this.radius);
         this.bubble.addEventListener(BubbleEvent.UPDATE, updateHandler);
         this.bubble.addEventListener(BubbleEvent.REMOVE_BUBBLE, removeBubbleHandler);
@@ -128,14 +130,38 @@ public class BubbleTest extends Sprite
                 Sprite(bVo.userData).y = bVo.y;
             }
         }
+		
+		//散开下落
+		for each (bVo in this.fallList) 
+		{
+			bVo.x += bVo.vx;
+			bVo.y += bVo.vy;
+			bVo.vy += bVo.g;
+			if (bVo.userData && bVo.userData is DisplayObject)
+            {
+                Sprite(bVo.userData).x = bVo.x;
+                Sprite(bVo.userData).y = bVo.y;
+            }
+			if (bVo.y > this.bubble.range.bottom + bVo.radius)
+			{
+				this.removeBubble(bVo);
+				delete this.fallList[bVo];
+			}
+		}
     }
     
     //销毁泡泡
     private function removeBubbleHandler(event:BubbleEvent):void 
     {
         //删除某个泡泡消息
-        this.removeBubble(BubbleEvent(event).bVo);
+		this.drawBubble(BubbleEvent(event).bVo);
+		BubbleEvent(event).bVo.vx = Random.randnum( -2, 2);
+		BubbleEvent(event).bVo.vy = Random.randnum(0, -4);
+		BubbleEvent(event).bVo.g = 1;
+		this.fallList[BubbleEvent(event).bVo] = BubbleEvent(event).bVo;
+        //this.removeBubble(BubbleEvent(event).bVo);
     }
+	
 	
     //更新泡泡数据
 	private function updateHandler(event:BubbleEvent):void 

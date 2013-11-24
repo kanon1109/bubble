@@ -112,7 +112,7 @@ public class Bubble extends EventDispatcher
     private function hitTest(bVo:BubbleVo):void
     {
         if (!this.shotBubbleVo) return;
-        if (this.shotBubbleVo != bVo && !bVo.isRemove)
+        if (this.shotBubbleVo != bVo)
         {
             if (MathUtil.distance(this.shotBubbleVo.x, this.shotBubbleVo.y, bVo.x, bVo.y) <= this.hitRange)
             {
@@ -341,7 +341,7 @@ public class Bubble extends EventDispatcher
 			//如果不在保留列表中则设置重力。
 			if (i == length)
 			{
-				bVo.g = 2;
+				bVo.g = 1;
 				this.removeBubble(bVo);
 				this.fallBubbleDict[bVo] = bVo;
 			}
