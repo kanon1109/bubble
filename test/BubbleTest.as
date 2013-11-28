@@ -51,7 +51,7 @@ public class BubbleTest extends Sprite
     {
         stage.align = StageAlign.TOP_LEFT;
 		this.fallList = new Dictionary();
-        this.bubble = new Bubble(this, 6, this.radius);
+        this.bubble = new Bubble(6, this.radius);
         this.bubble.addEventListener(BubbleEvent.UPDATE, updateHandler);
         this.bubble.addEventListener(BubbleEvent.REMOVE_BUBBLE, removeBubbleHandler);
         this.bubble.range = new Rectangle(0, 0, stage.stageWidth, stage.stageHeight);

@@ -34,8 +34,6 @@ public class Bubble extends EventDispatcher
     private var radius:Number;
     //碰撞检测范围
     private var hitRange:Number;
-    //外部容器
-    private var stage:DisplayObjectContainer;
     //移动范围
     private var _range:Rectangle;
     //射出的泡泡列表
@@ -48,12 +46,10 @@ public class Bubble extends EventDispatcher
     private var minLinkNum:int;
 	//起始类型是靠右还是靠左 false为左 用于添加第一行时计算定位使用。
 	private var startType:Boolean;
-    public function Bubble(stage:DisplayObjectContainer, 
-                           columns:int, 
+    public function Bubble(columns:int, 
 						   radius:Number, 
                            minLinkNum:int = 3)
     {
-        this.stage = stage;
         this._rows = 0;
         this.columns = columns;
         this.radius = radius;
@@ -641,7 +637,6 @@ public class Bubble extends EventDispatcher
         this.bubbleDict = null;
         this.bubbleCloseAry = null;
         this.range = null;
-        this.stage = null;
         this.fallBubbleDict = null;
     }
     
